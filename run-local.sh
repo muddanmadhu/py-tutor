@@ -19,6 +19,12 @@ API_PORT="${API_PORT:-8000}"
 WEB_PORT="${WEB_PORT:-5173}"
 VENV_PY="$ROOT/backend/.venv/bin/python"
 
+# Vite's `base` (set for GitHub Pages project-page hosting) applies in dev too,
+# so the app is served from a sub-path locally as well. Read it out of the
+# config rather than duplicating it, so the two cannot drift apart.
+WEB_BASE="$(sed -n "s/^[[:space:]]*base:[[:space:]]*'\([^']*\)'.*/\1/p" frontend/vite.config.ts | head -1)"
+WEB_BASE="${WEB_BASE:-/}"
+
 info()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn()  { printf '\033[33m!!\033[0m  %s\n' "$*"; }
 die()   { printf '\033[31mxx\033[0m  %s\n' "$*" >&2; exit 1; }
@@ -86,7 +92,7 @@ info "Starting API on http://127.0.0.1:$API_PORT"
     --host 127.0.0.1 --port "$API_PORT" --reload ) &
 PIDS+=($!)
 
-info "Starting web app on http://localhost:$WEB_PORT"
+info "Starting web app on http://localhost:$WEB_PORT$WEB_BASE"
 ( cd frontend && VITE_API_BASE_URL="http://127.0.0.1:$API_PORT" \
     exec npx vite --host 127.0.0.1 --port "$WEB_PORT" --strictPort ) &
 PIDS+=($!)
@@ -104,7 +110,7 @@ cat <<BANNER
   ────────────────────────────────────────────────────────────────
    PyForge is running
 
-     Web app        http://localhost:$WEB_PORT
+     Web app        http://localhost:$WEB_PORT$WEB_BASE
      API docs       http://127.0.0.1:$API_PORT/docs
      Health         http://127.0.0.1:$API_PORT/health
 

@@ -111,6 +111,27 @@ export const exercises = {
 };
 
 /**
+ * Whether the server runs code itself, asked once per session.
+ *
+ * Both topologies are supported — a Docker deployment executes server-side, a
+ * Pages deployment cannot — and only the server knows which it is. Without this
+ * check a local Docker/subprocess setup would run every program twice: once in
+ * Pyodide and once for real.
+ *
+ * On failure it assumes the server has no sandbox, because that is the case
+ * where guessing wrong leaves the learner unable to run anything at all.
+ */
+let sandboxProbe: Promise<boolean> | null = null;
+
+function serverHasSandbox(): Promise<boolean> {
+  sandboxProbe ??= api
+    .get<ExecutionHealth>('/api/execution/health')
+    .then((health) => health.backend !== 'client')
+    .catch(() => false);
+  return sandboxProbe;
+}
+
+/**
  * Client-reported execution, as the API expects it.
  *
  * `error_explanation` is deliberately dropped: the server derives it from the
@@ -130,11 +151,12 @@ function reportable(result: ExecuteResponse) {
 
 export const execution = {
   /**
-   * Run code in the browser, then tell the server about it.
+   * Run code, wherever this deployment runs it.
    *
-   * Pyodide produces the result; the round-trip exists only so the run lands in
-   * history, analytics and the streak counter. A failed report must not lose
-   * the learner their output, so the network error is swallowed.
+   * With a server-side sandbox the files go up and the server executes them.
+   * Without one, Pyodide executes locally and the round-trip exists only so the
+   * run lands in history, analytics and the streak counter — so a failed report
+   * must not lose the learner their output, and the network error is swallowed.
    */
   run: async (body: {
     files: Record<string, string>;
@@ -144,6 +166,10 @@ export const execution = {
     lesson_slug?: string;
     exercise_slug?: string;
   }): Promise<ExecuteResponse> => {
+    if (await serverHasSandbox()) {
+      return api.post<ExecuteResponse>('/api/execution/run', body);
+    }
+
     const result = await pyodide.run({
       files: body.files,
       mode: body.mode,
@@ -160,6 +186,15 @@ export const execution = {
     }
   },
   health: () => api.get<ExecutionHealth>('/api/execution/health'),
+  /**
+   * Start booting the in-browser interpreter, if this deployment needs one.
+   *
+   * Pyodide is a multi-megabyte download, so it is only fetched once we know
+   * the server will not be doing the running.
+   */
+  warmUp: async (): Promise<void> => {
+    if (!(await serverHasSandbox())) pyodide.warmUp();
+  },
   snippets: () =>
     api.get<
       Array<{

@@ -13,7 +13,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { execution } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
 import type { ExecuteResponse } from '@/api/types';
-import { warmUp } from '@/execution/runner';
 import { useTheme } from '@/state/theme';
 
 export interface CodeEditorProps {
@@ -63,11 +62,12 @@ export function CodeEditor({
     }
   }, [files, activeFile, entrypoint]);
 
-  // Python runs in the browser, and booting the interpreter is a multi-megabyte
-  // download. Start it as soon as an editor appears so the learner is reading
-  // the prompt while it loads, rather than waiting after pressing Run.
+  // Where Python runs depends on the deployment. If it runs here, booting the
+  // interpreter is a multi-megabyte download — start it as soon as an editor
+  // appears so the learner is reading the prompt while it loads, rather than
+  // waiting after pressing Run.
   useEffect(() => {
-    warmUp();
+    void execution.warmUp();
   }, []);
 
   const run = useCallback(
