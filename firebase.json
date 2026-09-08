@@ -1,0 +1,41 @@
+{
+  "hosting": {
+    "public": "frontend/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+
+    "//": "Real SPA rewriting, unlike the 404.html fallback GitHub Pages needs: a deep link like /learn/loops returns index.html with a 200 rather than a 404 the browser happens to render.",
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+
+    "headers": [
+      {
+        "//": "Vite fingerprints these, so a URL's contents can never change. Cache them for a year and skip revalidation entirely.",
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "//": "The curriculum and the vendored Python are regenerated on every deploy but keep stable filenames, so they must be revalidated or learners would be stuck on an old build.",
+        "source": "/content/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      },
+      {
+        "//": "The entry point names the current asset bundle; caching it would pin visitors to a stale deploy.",
+        "source": "/index.html",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      },
+      {
+        "//": "The app renders learner-authored markdown and runs learner Python, so deny framing and MIME sniffing. Deliberately NOT setting COOP/COEP: those would require cross-origin isolation, which blocks the Pyodide fetch from jsDelivr.",
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        ]
+      }
+    ]
+  }
+}

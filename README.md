@@ -27,7 +27,7 @@ Absolute Beginner → Python Developer → Automation Developer
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model and controls |
 | [docs/TESTING.md](docs/TESTING.md) | Test strategy and pyramid |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Containers, CI/CD, production hardening |
-| [docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) | Hosting on GitHub Pages + Firebase + Cloud Run |
+| [docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) | Publishing the static site (GitHub Pages or Firebase Hosting) |
 | [docs/CURRICULUM.md](docs/CURRICULUM.md) | Content model + how to author lessons |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution guide |
 
@@ -69,7 +69,7 @@ Absolute Beginner → Python Developer → Automation Developer
 
 ```bash
 ./run-local.sh
-# → web app  http://localhost:5173
+# → web app  http://localhost:5173/py-tutor/
 # → API docs http://127.0.0.1:8000/docs
 # → login    learner@example.com / demo-password-123
 ```
@@ -78,13 +78,18 @@ The script creates the virtualenv, installs both dependency sets, writes a
 `.env` with a fresh signing key, seeds the curriculum, and starts the API and the
 web app together. Ctrl-C stops both.
 
+The `/py-tutor/` path is Vite's `base`, set so the published GitHub Pages project
+page resolves its assets; the dev server honours it too. Publishing needs no
+server at all — see
+[docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md).
+
 **With Docker** (real container isolation — required in production):
 
 ```bash
 cp .env.example .env
 make up            # postgres + redis + api + runner image + web
 make seed          # load the seed curriculum
-open http://localhost:5173
+open http://localhost:5173/py-tutor/
 ```
 
 API docs: <http://localhost:8000/docs>

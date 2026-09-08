@@ -1,31 +1,77 @@
-# Publishing to GitHub Pages
+# Publishing the static site
 
 The site is **fully static**. There is no backend, no database, no accounts and
-nothing to pay for or operate.
+nothing to pay for or operate. Two hosts are set up; pick either.
 
-```
-                 GitHub Pages
-  muddanmadhu.github.io/py-tutor
-                      │
-      ┌───────────────┼────────────────┐
-      │               │                │
- content/*.json   Pyodide (WASM)   localStorage
- pre-rendered     runs Python,     progress, XP,
- from the real    grades, reviews  streak, mastery
- API at build
+|  | GitHub Pages | Firebase Hosting |
+| --- | --- | --- |
+| URL | `muddanmadhu.github.io/py-tutor/` | `<project>.web.app/` |
+| Base path | `/py-tutor/` | none — serves from the root |
+| Deep links | `404.html` fallback, 404 status | real rewrites, 200 status |
+| Setup | one setting, then automatic on push | CLI login once, then one command |
+| Cost | free (public repositories) | free — **Spark plan, no billing card** |
+
+Firebase gives the cleaner URLs and correct status codes; Pages gives
+deploy-on-push with no local tooling. Nothing stops you using both.
+
+## Option A — GitHub Pages
+
+1. **Settings → Pages → Source → GitHub Actions.**
+2. Push to `main`.
+
+That is the whole setup: no secrets, no variables.
+[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) installs the
+backend, runs the exporter, type-checks, lints, builds, asserts the content tree
+reached `dist/`, and deploys.
+
+## Option B — Firebase Hosting
+
+One-time, and it needs a browser so it cannot be scripted:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use --add        # pick your project; writes .firebaserc
 ```
 
-Everything happens in the visitor's browser. Python runs there, submissions are
-graded there, and progress is kept there.
+Then, for every deploy:
+
+```bash
+./deploy-firebase.sh              # live
+./deploy-firebase.sh --preview    # temporary URL, expires in 7 days
+```
+
+The script regenerates the content, type-checks, lints, builds with
+`--base=/`, verifies the bundle, and deploys. To make it automatic on push
+instead, `firebase init hosting:github` writes a workflow and stores the service
+account for you.
+
+Hosting is a static file server, so the **Spark** (free) plan is enough. Blaze is
+only needed for Cloud Functions or Cloud Run, and this build uses neither.
+[`firebase.json`](../firebase.json) sets the SPA rewrite, fingerprinted assets to
+`immutable` for a year, and the content tree to `must-revalidate` — the latter
+matters because those filenames are stable across deploys, so caching them would
+pin visitors to an old curriculum.
 
 ## How it works
+
+```
+              static host
+                   │
+   ┌───────────────┼────────────────┐
+   │               │                │
+content/*.json  Pyodide (WASM)   localStorage
+pre-rendered    runs Python,     progress, XP,
+from the real   grades, reviews  streak, mastery
+API at build
+```
 
 **Content** — `tools/export_static.py` seeds a throwaway database, drives the
 real FastAPI app through `TestClient`, and writes every GET response to a JSON
 file. With no accounts, every read is a pure function of the seed curriculum, so
 this is exact rather than an approximation, and the response shapes stay
-identical to the API-backed mode. Output is ~63 files / ~300 KiB, generated in CI
-and never committed, so it cannot drift from the curriculum.
+identical to the API-backed mode. Output is ~63 files / ~300 KiB, generated at
+deploy time and never committed, so it cannot drift from the curriculum.
 
 **Execution** — Pyodide, in a Web Worker. A worker rather than the main thread
 because Pyodide cannot interrupt a synchronous infinite loop from inside itself;
@@ -46,28 +92,10 @@ having no server for the cost of copying a file.
 engine is bound to SQLAlchemy. `backend/tests/test_static_mastery.py` runs both
 and requires the same numbers to 1e-9, so the port cannot drift silently.
 
-## Publishing it
-
-1. **Settings → Pages → Source → GitHub Actions.** That is the only setting
-   needed; there are no secrets or variables to configure.
-2. Push to `main`.
-
-[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) installs the
-backend, runs the exporter, type-checks, lints, builds, and deploys. It also
-asserts the content tree reached `dist/` — a build that ships without it looks
-fine and then shows an empty curriculum to every visitor.
-
-### Two things that are easy to get wrong
-
-**The base path is case-sensitive.** `vite.config.ts` sets
-`base: '/py-tutor/'`, which must match the repository name exactly. The router
-reads the same value via `import.meta.env.BASE_URL`, so the two cannot disagree.
-For a user page or a custom domain, build with `--base=/`.
-
-**`404.html` is the SPA fallback.** Pages has no rewrite rules, so a deep link
-like `/py-tutor/learn/loops` is not a file and Pages serves `404.html`. Making
-that a copy of `index.html` boots the app and lets the router resolve the URL.
-The response still carries a 404 status, which browsers ignore.
+**The content contract** — `backend/tests/test_static_export.py` asserts the
+exported JSON actually carries every field the client reads. TypeScript cannot
+catch that: a field can exist on an interface and be absent from the data, which
+reads as `undefined` and shows up as an empty panel on the live site.
 
 ## What is not in the static build
 
@@ -106,6 +134,17 @@ pays the boot cost again.
 
 **Only pure-Python packages work.** The sandbox has the standard library and
 pytest. Anything needing a native extension will not import.
+
+## Base paths, and why they differ
+
+`vite.config.ts` defaults to `base: '/py-tutor/'`, which must match the
+repository name exactly — Pages treats it case-sensitively. The router reads the
+same value through `import.meta.env.BASE_URL`, and so does the content fetcher,
+so nothing can disagree with the asset URLs.
+
+Firebase serves from the domain root, so `npm run build:root` builds with
+`--base=/` instead. `deploy-firebase.sh` uses it. A custom domain on either host
+wants the root build too.
 
 ## Running it with the full feature set
 
