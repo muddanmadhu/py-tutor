@@ -50,7 +50,7 @@ export interface WorkerResponse {
  * `PYFORGE_EXEC_MAX_OUTPUT_BYTES`.
  */
 const DRIVER = String.raw`
-import contextlib, io, json, os, pathlib, runpy, shutil, sys, time, traceback
+import contextlib, io, json, os, pathlib, shutil, sys, time, traceback
 
 WORKSPACE = "/workspace"
 
@@ -81,6 +81,31 @@ def _purge_learner_modules(before):
             del sys.modules[name]
 
 
+def _learner_traceback(exc_type, exc_value, exc_tb, entrypoint):
+    """Format a traceback that starts at the learner's code.
+
+    The driver's own frames sit on top of every traceback and are noise to
+    someone learning Python, so frames are dropped until the first one that
+    belongs to a file in the workspace. A SyntaxError has no frames at all —
+    it is raised at compile time — so the header is only emitted when there is
+    something under it.
+    """
+    frames = traceback.extract_tb(exc_tb)
+    for index, frame in enumerate(frames):
+        if frame.filename == entrypoint or frame.filename.startswith(WORKSPACE):
+            frames = frames[index:]
+            break
+    else:
+        frames = []
+
+    parts = []
+    if frames:
+        parts.append("Traceback (most recent call last):\n")
+        parts.extend(traceback.format_list(frames))
+    parts.extend(traceback.format_exception_only(exc_type, exc_value))
+    return "".join(parts)
+
+
 def run_job(job):
     files = job["files"]
     mode = job["mode"]
@@ -109,25 +134,25 @@ def run_job(job):
             if mode == "pytest":
                 import pytest
 
-                sys.argv = ["pytest", *job.get("pytest_args", [])]
-                exit_code = int(pytest.main(list(job.get("pytest_args", []))))
+                args = list(job.get("pytest_args", []))
+                sys.argv = ["pytest", *args]
+                exit_code = int(pytest.main(args))
             else:
                 entrypoint = job.get("entrypoint", "main.py")
                 sys.argv = [entrypoint]
                 try:
-                    runpy.run_path(entrypoint, run_name="__main__")
+                    # Compiled and exec'd rather than runpy.run_path, so the
+                    # traceback carries the learner's filename and no runpy
+                    # internals for them to wade through.
+                    source = pathlib.Path(entrypoint).read_text(encoding="utf-8")
+                    code = compile(source, entrypoint, "exec")
+                    exec(code, {"__name__": "__main__", "__file__": entrypoint})
                 except SystemExit as exc:
                     # A deliberate sys.exit() is the program's own exit code.
                     exit_code = 0 if exc.code is None else int(exc.code or 0)
                 except BaseException:
-                    # Trim the driver's own frames so the learner sees a traceback
-                    # that starts at their code, exactly as the server produced.
                     exc_type, exc_value, exc_tb = sys.exc_info()
-                    frames = traceback.extract_tb(exc_tb)
-                    keep = [f for f in frames if f.filename not in ("<exec>", __file__)]
-                    err.write("Traceback (most recent call last):\n")
-                    err.write("".join(traceback.format_list(keep)))
-                    err.write("".join(traceback.format_exception_only(exc_type, exc_value)))
+                    err.write(_learner_traceback(exc_type, exc_value, exc_tb, entrypoint))
                     exit_code = 1
     except BaseException as exc:  # a failure of the harness itself, not of learner code
         error = f"{type(exc).__name__}: {exc}"
