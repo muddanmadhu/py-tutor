@@ -70,10 +70,24 @@ info "Content ready: $(find "$CONTENT" -type f | wc -l | tr -d ' ') files"
 
 command -v npm >/dev/null || die "npm is not available on this build image."
 
+# Printed unconditionally: the first Render build failed with npm's opaque
+# "Exit handler never called!", and knowing the toolchain would have identified
+# it immediately. .node-version pins this, but a host that ignores that file
+# should be visible in the log rather than inferred.
+info "Toolchain: node $(node --version 2>/dev/null || echo '?'), npm $(npm --version 2>/dev/null || echo '?')"
+
 info "Installing web dependencies"
 cd "$ROOT/frontend"
 if [ -f package-lock.json ]; then
-  npm ci --no-audit --no-fund
+  # `npm ci` is preferred — it installs exactly the locked tree. But it aborts on
+  # any mismatch with the lockfile, and on some images it dies inside npm itself.
+  # Falling back to `npm install` resolves afresh: a weaker guarantee, so it is
+  # logged loudly rather than passed over.
+  if ! npm ci --no-audit --no-fund; then
+    warn "npm ci failed; retrying with npm install (resolves rather than replays the lockfile)"
+    rm -rf node_modules
+    npm install --no-audit --no-fund
+  fi
 else
   npm install --no-audit --no-fund
 fi

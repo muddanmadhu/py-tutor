@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "//": "package-lock.json is lockfileVersion 3, which needs npm 7+. Declaring the floor here makes a too-old toolchain fail with a clear message rather than npm's 'Exit handler never called!'. The pinned build version lives in .node-version at the repository root.",
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
