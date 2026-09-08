@@ -186,6 +186,21 @@ def grade_submission(payload: dict) -> str:
 '''
 
 
+#: The reviewer needs no shim — only an entry point, because ``review_files``
+#: already returns exactly the API's ReviewResponse via ``to_dict``.
+_REVIEWER_ENTRYPOINT = '''
+
+# --- browser entry point ---------------------------------------------------
+
+
+def review_submission(files: dict) -> str:
+    """Review the supplied files and return the API's ReviewResponse fields."""
+    import json
+
+    return json.dumps(review_files(files).to_dict())
+'''
+
+
 class Exporter:
     """Drives the app and writes the JSON tree."""
 
@@ -520,6 +535,25 @@ class Exporter:
         self.written += 1
         _log("vendored grading.py for the browser")
 
+    def export_reviewer(self) -> None:
+        """Vendor the code-review engine, which needs no shimming at all.
+
+        ``app/services/code_review.py`` imports only ``ast``, ``re``,
+        ``dataclasses``, ``enum`` and ``typing``, so the whole senior-engineer
+        review runs in Pyodide unmodified — the feature survives having no server
+        for the cost of copying a file.
+        """
+        source = (BACKEND / "app" / "services" / "code_review.py").read_text(encoding="utf-8")
+        if "from app." in source or "\nimport app" in source:
+            raise RuntimeError(
+                "code_review.py has grown an application import, so it can no longer be "
+                "vendored unmodified. Add a shim in tools/export_static.py."
+            )
+
+        (self.out / "reviewer.py").write_text(source + _REVIEWER_ENTRYPOINT, "utf-8")
+        self.written += 1
+        _log("vendored code_review.py for the browser")
+
     def export_manifest(self) -> None:
         """A marker the client checks so a stale deploy fails loudly."""
         self.write(
@@ -561,6 +595,7 @@ def main() -> int:
         exporter.export_interview()
         exporter.export_search_index()
         exporter.export_grader()
+        exporter.export_reviewer()
         exporter.export_manifest()
     finally:
         exporter.teardown()

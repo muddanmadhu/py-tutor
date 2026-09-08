@@ -50,13 +50,20 @@ def vendored(tmp_path_factory: pytest.TempPathFactory) -> Any:
     # dataclasses resolves string annotations through sys.modules, and Pyodide
     # execs this into __main__ which is always registered. Mirror that here.
     sys.modules["pyforge_vendored_grader"] = module
-    spec.loader.exec_module(module)
+    # Importing would otherwise drop a __pycache__ beside the generated file, and
+    # when the export target is frontend/public/ that bytecode ends up shipped.
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module
 
 
 def _exercise(**fields: Any) -> Exercise:
     """An unsaved exercise row carrying just what grading reads."""
-    row = Exercise(
+    return Exercise(
         slug=fields.get("slug", "demo"),
         title="Demo",
         prompt="Demo",
@@ -64,7 +71,6 @@ def _exercise(**fields: Any) -> Exercise:
         grader_config=fields.get("grader_config", {}),
         misconception_rules=fields.get("misconception_rules", []),
     )
-    return row
 
 
 def _both(
@@ -244,9 +250,7 @@ class TestStdoutMatchAgrees:
             "some text that is not a traceback at all",
         ],
     )
-    def test_every_misconception_is_derived_identically(
-        self, vendored: Any, stderr: str
-    ) -> None:
+    def test_every_misconception_is_derived_identically(self, vendored: Any, stderr: str) -> None:
         mine, theirs = _both(
             vendored,
             grader=GraderKind.STDOUT_MATCH.value,

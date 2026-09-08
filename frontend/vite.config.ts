@@ -8,10 +8,11 @@ const srcDir = new URL('./src', import.meta.url).pathname;
 export default defineConfig({
   plugins: [react()],
   // GitHub Pages serves a project page from a sub-path, so every asset URL has
-  // to be prefixed with the repository name. Override at build time for a user
-  // page or a custom domain, both of which serve from the root:
+  // to be prefixed with the repository name — which is case-sensitive and must
+  // match github.com/muddanmadhu/py-tutor exactly. Override at build time for a
+  // user page or a custom domain, both of which serve from the root:
   //   npm run build -- --base=/
-  base: '/Py-Tutor/',
+  base: '/py-tutor/',
   resolve: {
     alias: { '@': srcDir },
   },

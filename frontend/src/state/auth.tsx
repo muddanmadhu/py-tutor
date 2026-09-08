@@ -12,6 +12,7 @@ import {
 
 import { ApiError, tokens } from '@/api/client';
 import { auth } from '@/api/endpoints';
+import { STATIC_MODE } from '@/api/endpoints';
 import type { User } from '@/api/types';
 import {
   clearSession,
@@ -40,6 +41,9 @@ const AuthContext = createContext<AuthState | null>(null);
 
 /** Whether any credential is stored, under whichever scheme is configured. */
 function hasCredentials(): boolean {
+  // The static build has no credentials and needs none: the local profile is
+  // always present, so there is nothing to check before loading it.
+  if (STATIC_MODE) return true;
   return firebaseEnabled ? hasSession() : Boolean(tokens.access);
 }
 

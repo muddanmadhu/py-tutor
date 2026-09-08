@@ -74,19 +74,86 @@ export function isReady(): boolean {
   return booted;
 }
 
+/** Where the vendored Python modules live, relative to the deployed base path. */
+const CONTENT_ROOT = `${import.meta.env.BASE_URL}content`;
+
 /** Run Python in the browser and return the same shape the API used to return. */
 export async function run(options: RunOptions): Promise<ExecuteResponse> {
   const { files, mode = 'script', entrypoint = 'main.py', stdin = '' } = options;
+  const response = await dispatch({
+    op: 'run',
+    files,
+    mode,
+    entrypoint,
+    pytestArgs: mode === 'pytest' ? PYTEST_ARGS : [],
+    stdin,
+    maxOutputBytes: MAX_OUTPUT_BYTES,
+  });
 
+  return {
+    ok: response.ok,
+    exit_code: response.exitCode,
+    stdout: response.stdout,
+    stderr: response.stderr,
+    timed_out: response.timedOut,
+    duration_ms: response.durationMs,
+    stdout_truncated: response.stdoutTruncated,
+    stderr_truncated: response.stderrTruncated,
+    error: response.error,
+    error_explanation: null,
+  };
+}
+
+/**
+ * Grade a submission using the vendored backend grader.
+ *
+ * Runs in the same interpreter as execution, so a graded submission costs one
+ * Pyodide boot rather than two.
+ */
+export async function grade(payload: {
+  exercise: unknown;
+  files: Record<string, string>;
+  execution: unknown;
+  selected_index: number | null;
+}): Promise<{
+  status: string;
+  score: number;
+  checks: unknown[];
+  feedback: string;
+  misconceptions: string[];
+}> {
+  const response = await dispatch({ op: 'grade', payload, files: {} });
+  if (response.error) throw new Error(response.error);
+  return response.result as never;
+}
+
+/** Review files using the vendored code-review engine. */
+export async function review(files: Record<string, string>): Promise<unknown> {
+  const response = await dispatch({ op: 'review', files });
+  if (response.error) throw new Error(response.error);
+  return response.result;
+}
+
+/** Post one job to the worker and await its reply, enforcing the timeout. */
+async function dispatch(job: {
+  op: 'run' | 'grade' | 'review';
+  files: Record<string, string>;
+  mode?: 'script' | 'pytest';
+  entrypoint?: string;
+  pytestArgs?: string[];
+  stdin?: string;
+  maxOutputBytes?: number;
+  payload?: unknown;
+}): Promise<WorkerResponse> {
   worker ??= spawnWorker();
   const id = crypto.randomUUID();
   const started = performance.now();
 
   // A cold interpreter needs a far longer budget than the code itself does, so
-  // the first run is allowed the boot grace on top of the execution timeout.
+  // the first job is allowed the boot grace on top of the execution timeout.
   const budget = booted ? TIMEOUT_MS : TIMEOUT_MS + BOOT_GRACE_MS;
 
-  const response = await new Promise<WorkerResponse>((resolve) => {
+  return new Promise<WorkerResponse>((resolve) => {
     const timer = setTimeout(() => {
       pending = null;
       recycleWorker();
@@ -107,25 +174,15 @@ export async function run(options: RunOptions): Promise<ExecuteResponse> {
     pending = { id, resolve, timer };
     worker!.postMessage({
       id,
-      files,
-      mode,
-      entrypoint,
-      pytestArgs: mode === 'pytest' ? PYTEST_ARGS : [],
-      stdin,
-      maxOutputBytes: MAX_OUTPUT_BYTES,
+      op: job.op,
+      files: job.files,
+      mode: job.mode ?? 'script',
+      entrypoint: job.entrypoint ?? 'main.py',
+      pytestArgs: job.pytestArgs ?? [],
+      stdin: job.stdin ?? '',
+      maxOutputBytes: job.maxOutputBytes ?? MAX_OUTPUT_BYTES,
+      contentRoot: CONTENT_ROOT,
+      payload: job.payload,
     } satisfies WorkerRequest);
   });
-
-  return {
-    ok: response.ok,
-    exit_code: response.exitCode,
-    stdout: response.stdout,
-    stderr: response.stderr,
-    timed_out: response.timedOut,
-    duration_ms: response.durationMs,
-    stdout_truncated: response.stdoutTruncated,
-    stderr_truncated: response.stderrTruncated,
-    error: response.error,
-    error_explanation: null,
-  };
 }

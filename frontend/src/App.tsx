@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 
 import { AppLayout } from '@/components/AppLayout';
 import { Spinner } from '@/components/ui';
+import { STATIC_MODE } from '@/api/endpoints';
 import { LoginPage, RegisterPage } from '@/pages/AuthPages';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { ExercisePage, PracticePage } from '@/pages/ExercisePages';
@@ -21,6 +22,13 @@ import {
 } from '@/pages/ToolPages';
 import { useAuth } from '@/state/auth';
 
+/**
+ * Gate a route behind sign-in.
+ *
+ * In the static build there are no accounts — the local profile always exists —
+ * so this waits for it to load and then lets everyone through. The redirect only
+ * happens in the API-backed build, which does have real sign-in.
+ */
 function RequireAuth({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -28,11 +36,11 @@ function RequireAuth({ children }: { children: ReactElement }) {
   if (loading) {
     return (
       <div className="center-page">
-        <Spinner label="Signing you in" />
+        <Spinner label={STATIC_MODE ? 'Loading your progress' : 'Signing you in'} />
       </div>
     );
   }
-  if (!user) {
+  if (!user && !STATIC_MODE) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
   return children;
