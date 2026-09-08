@@ -1,0 +1,70 @@
+name: pyforge
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pyforge
+      POSTGRES_PASSWORD: pyforge
+      POSTGRES_DB: pyforge
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pyforge -d pyforge"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Built, never started. The API launches short-lived containers from this image.
+  runner:
+    build:
+      context: ./runner
+    image: pyforge/runner:latest
+    profiles: ["build-only"]
+
+  api:
+    build:
+      context: ./backend
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    environment:
+      PYFORGE_DATABASE_URL: postgresql+psycopg://pyforge:pyforge@db:5432/pyforge
+      PYFORGE_REDIS_URL: redis://redis:6379/0
+      PYFORGE_SECRET_KEY: ${PYFORGE_SECRET_KEY:-dev-only-secret-change-me}
+      PYFORGE_EXECUTOR: ${PYFORGE_EXECUTOR:-docker}
+      PYFORGE_RUNNER_IMAGE: pyforge/runner:latest
+      PYFORGE_ANTHROPIC_API_KEY: ${PYFORGE_ANTHROPIC_API_KEY:-}
+      PYFORGE_CORS_ORIGINS: http://localhost:5173
+    ports: ["8000:8000"]
+    volumes:
+      # The API orchestrates sibling runner containers via the host daemon.
+      # See docs/SECURITY.md — in production replace with a remote runner service.
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./frontend
+    depends_on:
+      api: {condition: service_started}
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports: ["5173:5173"]
+
+volumes:
+  pgdata:
