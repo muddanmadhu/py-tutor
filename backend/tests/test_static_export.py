@@ -256,3 +256,76 @@ class TestNoLeakedArtefacts:
         for name in ("grader.py", "reviewer.py"):
             source = (content / name).read_text(encoding="utf-8")
             assert "from app." not in source, f"{name} still imports the application package"
+
+
+class TestTheExportIsReproducible:
+    """Two exports of the same curriculum must produce identical bytes.
+
+    The tree is committed so that static-site build images need no Python, and
+    CI guards against staleness by re-exporting and diffing. That check is only
+    meaningful if the export is deterministic — otherwise it fails on every push
+    and everyone learns to ignore it.
+
+    Two things broke this when the check was first added: a timestamp recording
+    when the export ran, and database queries returning concept lists in an
+    arbitrary order.
+    """
+
+    def test_a_second_export_is_byte_identical(self, content: Path, tmp_path: Path) -> None:
+        second = tmp_path / "again"
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, str(EXPORTER), "--out", str(second)],
+            capture_output=True,
+            text=True,
+            cwd=REPO,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr[-2000:]
+
+        first_files = {p.relative_to(content) for p in content.rglob("*") if p.is_file()}
+        second_files = {p.relative_to(second) for p in second.rglob("*") if p.is_file()}
+        assert first_files == second_files, "the two exports contain different files"
+
+        differing = [
+            str(relative)
+            for relative in sorted(first_files)
+            if (content / relative).read_bytes() != (second / relative).read_bytes()
+        ]
+        assert not differing, (
+            "the export is not reproducible, so the CI staleness check would fail on "
+            f"every push. Differing files: {differing[:10]}"
+        )
+
+    def test_unordered_lists_are_sorted(self, content: Path) -> None:
+        """Sorting is what makes arbitrary query order stop mattering.
+
+        Only lists reached through one of the keys in ``UNORDERED_LIST_KEYS`` are
+        sorted. ``concepts.json`` is a top-level list ordered by the API itself,
+        so it is covered by the reproducibility test above rather than here.
+        """
+        for path in sorted((content / "exercises").glob("*.json")):
+            slugs = json.loads(path.read_text(encoding="utf-8"))["concept_slugs"]
+            assert slugs == sorted(slugs), f"{path.stem} has unsorted concept_slugs"
+
+        for path in sorted((content / "lessons").glob("*.json")):
+            lesson = json.loads(path.read_text(encoding="utf-8"))
+            embedded = [concept["slug"] for concept in lesson.get("concepts", [])]
+            assert embedded == sorted(embedded), f"{path.stem} has unsorted concepts"
+
+    def test_ordered_lists_are_left_alone(self, content: Path) -> None:
+        """Sorting these would change the content, not merely its bytes."""
+        for path in sorted((content / "exercises").glob("*.json")):
+            document = json.loads(path.read_text(encoding="utf-8"))
+
+            # The hint ladder is positional: rung 1 must come before rung 2.
+            levels = [hint["level"] for hint in document["hints"]]
+            assert levels == sorted(levels), f"{path.stem} hint ladder is out of order"
+
+            # Options are positional too — correct_index points into them — so a
+            # sorted-looking list here would be a coincidence, not a guarantee.
+            if document["grader"] == "multiple_choice":
+                options = document["grader_config"]["options"]
+                index = document["grader_config"]["correct_index"]
+                assert 0 <= index < len(options), (
+                    f"{path.stem} correct_index {index} does not address its options"
+                )

@@ -24,29 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # The content tree is generated rather than committed, so it cannot drift
-      # from the seed curriculum. That needs the backend installed, even though
-      # nothing Python ends up being served.
-      - name: Install backend (for the content export)
-        working-directory: backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e "."
-
-      - name: Export curriculum, grader and reviewer
-        run: python tools/export_static.py
-
+      # No Python step: the content tree is committed, and ci.yml fails if it is
+      # stale. That keeps this workflow identical in shape to the static hosts,
+      # whose build images cannot be relied on to have a usable Python.
       - name: Install web dependencies
         working-directory: frontend
         run: npm ci

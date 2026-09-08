@@ -2,11 +2,15 @@
 #
 # Build the static site on a hosted CI runner (Render, Netlify, Cloudflare Pages).
 #
-# Kept as a script rather than a one-line buildCommand because it needs to do
-# three things in order and fail loudly on each: install the backend (only so the
-# content exporter can import it), generate the content tree, then build the web
-# app. Inlining that into YAML makes failures hard to read and impossible to
-# reproduce locally.
+# The content tree is committed, so this build needs **Node only**. Static-site
+# build images are Node-focused: Python may be absent, and where it is present a
+# PEP 668 "externally managed environment" refuses `pip install`. Depending on it
+# made the deploy fail on exactly the hosts this script exists to serve.
+#
+# The exporter still runs when Python is available, so a local build always picks
+# up curriculum edits immediately. When it is not, the committed tree is used and
+# CI guarantees that tree is current — .github/workflows/ci.yml re-exports and
+# fails if the result differs from what is committed.
 #
 # Run it locally exactly as the host does:
 #
@@ -20,27 +24,47 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 info() { printf '\033[36m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m!!\033[0m  %s\n' "$*"; }
 die()  { printf '\033[31mxx\033[0m  %s\n' "$*" >&2; exit 1; }
 
-# --- Python: only needed to run the exporter -------------------------------
-#
-# Prefer a local virtualenv when one exists, so this script behaves identically
-# on a developer machine and on a build runner that has none.
+CONTENT="$ROOT/frontend/public/content"
 
-if [ -x "$ROOT/backend/.venv/bin/python" ]; then
-  PY="$ROOT/backend/.venv/bin/python"
-  info "Using the existing virtualenv"
+# --- Content: regenerate if we can, otherwise use the committed tree --------
+
+regenerate() {
+  if [ -x "$ROOT/backend/.venv/bin/python" ]; then
+    info "Regenerating content with the local virtualenv"
+    "$ROOT/backend/.venv/bin/python" tools/export_static.py
+    return 0
+  fi
+
+  local py
+  py="$(command -v python3 || command -v python || true)"
+  [ -n "$py" ] || return 1
+
+  # An isolated venv rather than `pip install --user`, which PEP 668 rejects on
+  # current Debian and Ubuntu images.
+  if "$py" -m venv /tmp/pyforge-export >/dev/null 2>&1; then
+    info "Regenerating content with a temporary venv ($("$py" --version 2>&1))"
+    /tmp/pyforge-export/bin/pip install --quiet --upgrade pip >/dev/null 2>&1 || true
+    /tmp/pyforge-export/bin/pip install --quiet -e ./backend || return 1
+    /tmp/pyforge-export/bin/python tools/export_static.py || return 1
+    return 0
+  fi
+  return 1
+}
+
+if regenerate; then
+  :
 else
-  PY="$(command -v python3 || command -v python)" || die "No Python interpreter found."
-  info "Installing the backend with $($PY --version)"
-  # --user keeps this working on images where site-packages is not writable.
-  # Only the base dependencies are needed; nothing here runs the API or tests.
-  "$PY" -m pip install --user --quiet --upgrade pip
-  "$PY" -m pip install --user --quiet -e ./backend
+  warn "No usable Python on this image; using the committed content tree."
+  warn "CI verifies that tree is current, so this is expected on a static host."
+  [ -f "$CONTENT/courses.json" ] || die "No Python *and* no committed content — cannot build."
 fi
 
-info "Exporting curriculum, grader and reviewer"
-"$PY" tools/export_static.py
+[ -f "$CONTENT/grader.py" ] || die "$CONTENT/grader.py is missing; grading would not work."
+[ -f "$CONTENT/reviewer.py" ] || die "$CONTENT/reviewer.py is missing; code review would not work."
+info "Content ready: $(find "$CONTENT" -type f | wc -l | tr -d ' ') files"
 
 # --- Web app ---------------------------------------------------------------
 

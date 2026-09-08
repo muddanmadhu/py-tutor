@@ -201,6 +201,62 @@ def review_submission(files: dict) -> str:
 '''
 
 
+#: Lists whose order carries no meaning, and which the database returns in an
+#: arbitrary order. They are sorted so two exports of the same curriculum are
+#: byte-identical — which is what lets CI diff a committed tree against a fresh
+#: export. Ordered lists (modules, lessons, hints, rubric rows, multiple-choice
+#: options) are deliberately absent: reordering those would change the content.
+UNORDERED_LIST_KEYS = frozenset(
+    {
+        "concepts",
+        "concept_slugs",
+        "prerequisites",
+        "prerequisite_slugs",
+        "blocked_by",
+        "misconceptions",
+        "tracks",
+    }
+)
+
+#: Timestamps that record when the *export ran*, not anything about the content.
+#: Left in place they would change on every run. Nothing in the static build has
+#: real user data, so none of these carries information.
+VOLATILE_TIMESTAMP_KEYS = frozenset(
+    {"updated_at", "created_at", "last_login_at", "awarded_at", "last_practiced_at"}
+)
+
+#: What a normalised timestamp becomes. A fixed instant rather than null, because
+#: some of these fields are non-nullable in the API contract.
+EPOCH = "1970-01-01T00:00:00"
+
+
+def _sort_key(item: Any) -> str:
+    """Order list members stably, whether they are strings or documents."""
+    if isinstance(item, dict):
+        for field in ("slug", "key", "id", "name", "concept_slug"):
+            if field in item:
+                return str(item[field])
+        return json.dumps(item, sort_keys=True)
+    return str(item)
+
+
+def normalise(value: Any, key: str | None = None) -> Any:
+    """Make a response document byte-stable across export runs.
+
+    Two runs against the same curriculum must produce identical bytes, otherwise
+    the CI check that compares the committed tree with a fresh export fails on
+    every push and stops meaning anything.
+    """
+    if isinstance(value, dict):
+        return {k: normalise(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        items = [normalise(item) for item in value]
+        return sorted(items, key=_sort_key) if key in UNORDERED_LIST_KEYS else items
+    if key in VOLATILE_TIMESTAMP_KEYS and isinstance(value, str) and value:
+        return EPOCH
+    return value
+
+
 class Exporter:
     """Drives the app and writes the JSON tree."""
 
@@ -217,7 +273,8 @@ class Exporter:
         target.parent.mkdir(parents=True, exist_ok=True)
         # separators drop the spaces json.dumps adds by default; on ~1500 files
         # that is a worthwhile chunk of transfer for output nobody reads by hand.
-        text = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        # `normalise` makes the bytes reproducible; see its docstring.
+        text = json.dumps(normalise(payload), separators=(",", ":"), ensure_ascii=False)
         target.write_text(text, encoding="utf-8")
         self.written += 1
         self.bytes += len(text.encode("utf-8"))
@@ -543,7 +600,9 @@ class Exporter:
         review runs in Pyodide unmodified — the feature survives having no server
         for the cost of copying a file.
         """
-        source = (BACKEND / "app" / "services" / "code_review.py").read_text(encoding="utf-8")
+        source = (BACKEND / "app" / "services" / "code_review.py").read_text(
+            encoding="utf-8"
+        )
         if "from app." in source or "\nimport app" in source:
             raise RuntimeError(
                 "code_review.py has grown an application import, so it can no longer be "

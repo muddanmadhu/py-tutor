@@ -74,6 +74,20 @@ jobs:
           PYFORGE_SECRET_KEY: ci-only-secret-key-long-enough-for-validation
         run: python -m app.db.init_db --seed
 
+      # The exported content tree is committed, because static-site build images
+      # cannot be relied on to have a usable Python. That trades a generation
+      # step for a staleness risk, so the risk is closed here: re-export and
+      # require the result to match what is committed.
+      - name: Verify the exported content tree is current
+        run: |
+          python tools/export_static.py
+          if ! git diff --quiet -- frontend/public/content; then
+            echo "::error::frontend/public/content is stale. Run: python tools/export_static.py"
+            git diff --stat -- frontend/public/content
+            exit 1
+          fi
+          echo "content tree matches the curriculum"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
