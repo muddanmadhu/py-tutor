@@ -1,0 +1,70 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Point Render at this repository (New → Blueprint) and it configures the site
+# from this file: no build settings to fill in by hand, and the configuration is
+# reviewable in git rather than living in a dashboard.
+#
+# This is a *static* site. There is no server, no database and nothing that can
+# spin down — the free static tier serves the built bundle directly, and the
+# whole application (running Python, grading, code review) happens in the
+# visitor's browser.
+
+services:
+  - type: web
+    name: py-tutor
+    runtime: static
+    # Everything the build does is in the script, so it can be run and debugged
+    # locally exactly as Render runs it.
+    buildCommand: ./render-build.sh
+    staticPublishPath: ./frontend/dist
+
+    # Rebuild only when something that affects the output changes. The backend's
+    # content package is included because the curriculum is exported from it;
+    # the rest of the backend cannot change what is served.
+    buildFilter:
+      paths:
+        - frontend/**
+        - backend/app/content/**
+        - backend/app/services/grading.py
+        - backend/app/services/code_review.py
+        - tools/export_static.py
+        - render-build.sh
+        - render.yaml
+
+    # A pull request gets its own URL, so curriculum changes can be read before
+    # they reach the live site.
+    pullRequestPreviewsEnabled: true
+
+    routes:
+      # Real SPA rewriting: a deep link like /learn/loops returns index.html with
+      # a 200, rather than the 404 that GitHub Pages' 404.html fallback returns
+      # and the browser merely happens to render.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      # Vite fingerprints these, so a URL's contents can never change.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+      # The curriculum and the vendored Python are regenerated on every deploy
+      # but keep stable filenames, so they must be revalidated — otherwise
+      # visitors stay pinned to an old build.
+      - path: /content/*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+
+      # The app renders authored markdown and runs learner Python, so deny
+      # framing and MIME sniffing. Deliberately no COOP/COEP: cross-origin
+      # isolation would block the Pyodide fetch from jsDelivr.
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

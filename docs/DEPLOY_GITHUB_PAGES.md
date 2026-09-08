@@ -1,28 +1,37 @@
 # Publishing the static site
 
 The site is **fully static**. There is no backend, no database, no accounts and
-nothing to pay for or operate. Two hosts are set up; pick either.
+nothing to pay for or operate. Four hosts are configured; pick one.
 
-|  | GitHub Pages | Firebase Hosting |
-| --- | --- | --- |
-| URL | `muddanmadhu.github.io/py-tutor/` | `<project>.web.app/` |
-| Base path | `/py-tutor/` | none — serves from the root |
-| Deep links | `404.html` fallback, 404 status | real rewrites, 200 status |
-| Setup | one setting, then automatic on push | CLI login once, then one command |
-| Cost | free (public repositories) | free — **Spark plan, no billing card** |
+|  | Render | Firebase Hosting | Pages (Actions) | Pages (`gh-pages`) |
+| --- | --- | --- | --- | --- |
+| URL | `<name>.onrender.com` | `<project>.web.app` | `…github.io/py-tutor/` | same |
+| Serves from root | yes | yes | no — `/py-tutor/` | no |
+| Deep links | rewrite, 200 | rewrite, 200 | `404.html`, 404 status | same |
+| Auto-deploy on push | yes | no — CLI, or extra setup | yes | no — manual rebuild |
+| PR previews | yes | with a flag | no | no |
+| Setup | connect the repo once | CLI login | one setting | none |
+| Cost | free static tier | free (Spark, no card) | free (public repos) | free |
 
-Firebase gives the cleaner URLs and correct status codes; Pages gives
-deploy-on-push with no local tooling. Nothing stops you using both.
+**Render is the best of these** for this project: root URL, real rewrites,
+auto-deploy on push, and per-PR preview URLs, configured from a file in git
+rather than a dashboard. Pages-via-Actions is the closest runner-up and needs no
+third-party account.
 
-## Option A — GitHub Pages
+## Option A — Render (recommended)
 
-1. **Settings → Pages → Source → GitHub Actions.**
-2. Push to `main`.
+New → **Blueprint** → point it at this repository. [`render.yaml`](../render.yaml)
+supplies everything: build command, publish path, SPA rewrite, cache headers, and
+a build filter so unrelated commits do not trigger a rebuild.
 
-That is the whole setup: no secrets, no variables.
-[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) installs the
-backend, runs the exporter, type-checks, lints, builds, asserts the content tree
-reached `dist/`, and deploys.
+The build runs [`render-build.sh`](../render-build.sh), which installs the backend
+(only so the content exporter can import it), generates the content tree,
+type-checks, lints, builds with `--base=/`, and refuses to publish a bundle
+missing its content. Run it locally exactly as Render does:
+
+```bash
+./render-build.sh
+```
 
 ## Option B — Firebase Hosting
 
@@ -34,24 +43,48 @@ firebase login
 firebase use --add        # pick your project; writes .firebaserc
 ```
 
-Then, for every deploy:
+Then per deploy:
 
 ```bash
 ./deploy-firebase.sh              # live
 ./deploy-firebase.sh --preview    # temporary URL, expires in 7 days
 ```
 
-The script regenerates the content, type-checks, lints, builds with
-`--base=/`, verifies the bundle, and deploys. To make it automatic on push
-instead, `firebase init hosting:github` writes a workflow and stores the service
-account for you.
-
-Hosting is a static file server, so the **Spark** (free) plan is enough. Blaze is
+Hosting is a static file server, so the **Spark** (free) plan is enough — Blaze is
 only needed for Cloud Functions or Cloud Run, and this build uses neither.
-[`firebase.json`](../firebase.json) sets the SPA rewrite, fingerprinted assets to
-`immutable` for a year, and the content tree to `must-revalidate` — the latter
-matters because those filenames are stable across deploys, so caching them would
-pin visitors to an old curriculum.
+`firebase init hosting:github` will convert this to deploy-on-push.
+
+## Option C — GitHub Pages via Actions
+
+1. **Settings → Pages → Source → GitHub Actions.**
+2. Push to `main`.
+
+No secrets or variables. [`.github/workflows/pages.yml`](../.github/workflows/pages.yml)
+runs the same pipeline and asserts the content tree reached `dist/`.
+
+## Option D — GitHub Pages via the `gh-pages` branch
+
+A built bundle is already pushed to that branch, which GitHub has historically
+auto-enabled Pages for. It needs no setup if that still holds, but future changes
+require rebuilding and repushing by hand:
+
+```bash
+cd frontend && npm run build && cp dist/index.html dist/404.html && touch dist/.nojekyll
+```
+
+Pages' source is *either* a branch *or* Actions, never both. Switching to Actions
+supersedes this branch, and it can then be deleted.
+
+## Base paths, and why they differ
+
+`vite.config.ts` defaults to `base: '/py-tutor/'`, which must match the
+repository name exactly — Pages treats it case-sensitively. The router reads the
+same value through `import.meta.env.BASE_URL`, and so does the content fetcher,
+so nothing can disagree with the asset URLs.
+
+Render and Firebase serve from the domain root, so both use
+`npm run build:root` (`--base=/`) instead. A custom domain on any host wants the
+root build too.
 
 ## How it works
 

@@ -27,7 +27,7 @@ Absolute Beginner → Python Developer → Automation Developer
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model and controls |
 | [docs/TESTING.md](docs/TESTING.md) | Test strategy and pyramid |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Containers, CI/CD, production hardening |
-| [docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) | Publishing the static site (GitHub Pages or Firebase Hosting) |
+| [docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) | Publishing the static site (Render, Firebase, GitHub Pages) |
 | [docs/CURRICULUM.md](docs/CURRICULUM.md) | Content model + how to author lessons |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution guide |
 
