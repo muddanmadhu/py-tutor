@@ -205,17 +205,6 @@ pays the boot cost again.
 **Only pure-Python packages work.** The sandbox has the standard library and
 pytest. Anything needing a native extension will not import.
 
-## Base paths, and why they differ
-
-`vite.config.ts` defaults to `base: '/py-tutor/'`, which must match the
-repository name exactly — Pages treats it case-sensitively. The router reads the
-same value through `import.meta.env.BASE_URL`, and so does the content fetcher,
-so nothing can disagree with the asset URLs.
-
-Firebase serves from the domain root, so `npm run build:root` builds with
-`--base=/` instead. `deploy-firebase.sh` uses it. A custom domain on either host
-wants the root build too.
-
 ## Running it with the full feature set
 
 The same codebase still runs API-backed, which is what `run-local.sh` does — with
