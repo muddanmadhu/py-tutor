@@ -79,6 +79,26 @@ info "Toolchain: node $(node --version 2>/dev/null || echo '?'), npm $(npm --ver
 info "Installing web dependencies"
 cd "$ROOT/frontend"
 
+# A lockfile generated behind a private registry mirror records that mirror's
+# hostname in every `resolved` URL. No public build host can resolve those
+# names, and npm reports it as a generic network error a minute in — once per
+# rung of the ladder below, so the real cause arrives three minutes late and
+# looks like flaky networking. Check it up front and say what is wrong.
+if [ -f package-lock.json ]; then
+  foreign="$(grep -oE '"resolved": "https?://[^/]+' package-lock.json \
+    | sed 's|.*://||' | grep -vx 'registry.npmjs.org' | sort -u || true)"
+  if [ -n "$foreign" ]; then
+    warn "package-lock.json resolves packages from a non-public registry:"
+    printf '%s\n' "$foreign" | while IFS= read -r host; do warn "    $host"; done
+    die "No public build host can reach those. Regenerate the lockfile against the
+    public registry, from a machine that can read it:
+
+      cd frontend && npm install --package-lock-only --registry=https://registry.npmjs.org
+
+    The tarballs are identical, so the integrity hashes do not change."
+  fi
+fi
+
 # Render has died here with npm's "Exit handler never called!". That message
 # means npm was terminated before it could run its own exit handler, so it
 # describes the symptom and says nothing about the cause. The ladder below
