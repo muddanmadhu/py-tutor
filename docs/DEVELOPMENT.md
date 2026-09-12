@@ -179,3 +179,20 @@ This is how the `-I` isolated-mode defect was found: `-I` implies `-P`, which
 drops the workspace from `sys.path`, so `from helper import shout` could never
 resolve. The runner now uses `-s -E`, which keeps the same isolation without
 breaking multi-file submissions.
+
+## Checking the static build the way a host serves it
+
+`./serve-static.sh` builds the no-backend bundle and serves it on :4173 through
+`tools/static_server.mjs`, which reproduces the SPA rewrite and the cache and
+security headers from `render.yaml`. Use it before publishing: routing bugs —
+a deep link that 404s, a `content/` response served from cache — do not appear
+under `vite dev`, which resolves those paths itself.
+
+```bash
+./serve-static.sh --rebuild        # export content, typecheck, lint, build, serve
+node --test tools/static_server.test.mjs   # the routing rules
+```
+
+The server is Node stdlib only and binds nothing on import, so the test drives
+the handler with mock request and response objects — a machine that forbids
+listening sockets still runs the coverage.

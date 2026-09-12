@@ -18,6 +18,43 @@ auto-deploy on push, and per-PR preview URLs, configured from a file in git
 rather than a dashboard. Pages-via-Actions is the closest runner-up and needs no
 third-party account.
 
+## Serving it locally
+
+Before publishing anywhere — or instead of it:
+
+```bash
+./serve-static.sh            # build if needed, then serve on :4173
+./serve-static.sh --rebuild  # force a fresh build first
+./serve-static.sh --port 8080
+./serve-static.sh --no-build # serve whatever is already in frontend/dist
+```
+
+This is a real local host for the published artifact, not a dev server: it builds
+with `--base=/`, then serves `frontend/dist` through
+[`tools/static_server.mjs`](../tools/static_server.mjs) with the SPA rewrite and
+the cache and security headers from [`render.yaml`](../render.yaml). A bug that
+only appears under production routing — a deep link that 404s, a stale `content/`
+response — appears here too.
+
+`python3 -m http.server` is the tempting alternative and it is the wrong tool: it
+has no SPA fallback, so every deep link 404s and reloading any page but the home
+page looks like a broken site.
+
+The server is Node stdlib only, so there is nothing to install.
+[`tools/static_server.test.mjs`](../tools/static_server.test.mjs) covers the
+routing rules — deep-link fallback, honest 404s for missing assets, content
+types, cache headers, and that nothing above the bundle can be reached:
+
+```bash
+node --test tools/static_server.test.mjs
+```
+
+One difference from the hosts, deliberately: a missing path that *has* a file
+extension gets a 404 rather than the rewrite. `render.yaml` rewrites everything,
+which answers a mistyped `/assets/index-abc123.js` with HTML — reported by the
+browser as `Unexpected token '<'`, which sends you reading the bundle instead of
+noticing the file is absent.
+
 ## Option A — Render (recommended)
 
 New → **Blueprint** → point it at this repository. [`render.yaml`](../render.yaml)

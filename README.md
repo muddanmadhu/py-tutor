@@ -65,7 +65,23 @@ Absolute Beginner → Python Developer → Automation Developer
 
 ## Quickstart
 
-**Without Docker** (fastest look around — no container isolation, dev only):
+**Static, no backend** (what the published site is — one command, nothing to install
+beyond Node):
+
+```bash
+./serve-static.sh
+# → http://localhost:4173/
+```
+
+Builds the bundle and serves it locally with the same SPA rewrite and cache headers
+the production hosts use, so what you see locally is what visitors get. The
+curriculum is pre-rendered JSON and Python runs in your browser under Pyodide —
+no API, no database, no login. The AI chat tutor, accounts and certifications need
+a server and are not in this mode;
+[docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) lists exactly what is left
+out and why.
+
+**Without Docker** (full feature set — no container isolation, dev only):
 
 ```bash
 ./run-local.sh
