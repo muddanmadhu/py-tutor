@@ -70,6 +70,9 @@ export function App() {
         <Route path="reference" element={<ReferencePage />} />
         <Route path="reference/:key" element={<ReferenceEntryPage />} />
         <Route path="lab" element={<CodeLabPage />} />
+        {/* Not in the navigation: the tab was removed because the static build has
+            no model to talk to. The route stays reachable by URL, so the
+            definition-of-done suite and any bookmark still work. */}
         <Route path="tutor" element={<TutorPage />} />
         <Route path="interview" element={<InterviewPage />} />
         <Route path="progress" element={<ProgressPage />} />

@@ -17,7 +17,6 @@ const PRIMARY_NAV = [
 const TOOLS_NAV = [
   { to: '/reference', label: 'Python Reference' },
   { to: '/lab', label: 'Code Lab' },
-  { to: '/tutor', label: 'AI Tutor' },
   { to: '/interview', label: 'Interview Prep' },
 ];
 
