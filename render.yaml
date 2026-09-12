@@ -19,13 +19,15 @@ services:
     staticPublishPath: ./frontend/dist
 
     envVars:
-      # The build image's default Node was too old for a lockfileVersion 3
-      # lockfile and npm died inside itself ("Exit handler never called!").
+      # Node 24, for the npm it bundles. Pinning 22 was the first attempt at
+      # npm's "Exit handler never called!" and it did not help: 22 ships npm
+      # 10.9, which is the version that fails here. 24 ships npm 11, which
+      # installs this lockfileVersion 3 tree cleanly.
       # `.node-version` at the repository root says the same thing for hosts that
       # read it; this is here because Render's env var takes precedence and makes
       # the pin obvious in the dashboard.
       - key: NODE_VERSION
-        value: "22"
+        value: "24"
 
     # Rebuild only when something that affects the output changes. The backend's
     # content package is included because the curriculum is exported from it;

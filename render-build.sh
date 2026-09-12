@@ -78,18 +78,43 @@ info "Toolchain: node $(node --version 2>/dev/null || echo '?'), npm $(npm --ver
 
 info "Installing web dependencies"
 cd "$ROOT/frontend"
+
+# Render has died here with npm's "Exit handler never called!". That message
+# means npm was terminated before it could run its own exit handler, so it
+# describes the symptom and says nothing about the cause. The ladder below
+# addresses the plausible causes in order, because the log cannot tell them
+# apart and each rung costs more than the last.
+#
+# Unpacking the tree is the memory-hungry phase, and being OOM-killed is the
+# most common way a process exits without its handler running. The default heap
+# on a small build container is what tips it over.
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
+
+npm_flags=(--no-audit --no-fund)
+
+# Rungs 2 and 3 install through a throwaway cache. Render persists its cache
+# directory between builds, so one corrupted entry fails every future deploy
+# identically — which is what `npm ci` and `npm install` both dying the same
+# way looks like. This is not the default because discarding a warm cache means
+# re-downloading the whole tree, which is a real cost to pay on every build for
+# a fault that may never recur.
+fresh_cache=(--cache "$(mktemp -d)/npm" --maxsockets 1)
+
 if [ -f package-lock.json ]; then
-  # `npm ci` is preferred — it installs exactly the locked tree. But it aborts on
-  # any mismatch with the lockfile, and on some images it dies inside npm itself.
-  # Falling back to `npm install` resolves afresh: a weaker guarantee, so it is
-  # logged loudly rather than passed over.
-  if ! npm ci --no-audit --no-fund; then
-    warn "npm ci failed; retrying with npm install (resolves rather than replays the lockfile)"
+  # `npm ci` is preferred — it installs exactly the locked tree. But it aborts
+  # on any mismatch with the lockfile, and on some images it dies inside npm
+  # itself, so each fallback is logged loudly rather than passed over.
+  if ! npm ci "${npm_flags[@]}"; then
+    warn "npm ci failed; retrying with a throwaway cache on a single connection"
     rm -rf node_modules
-    npm install --no-audit --no-fund
+    if ! npm ci "${npm_flags[@]}" "${fresh_cache[@]}"; then
+      warn "npm ci failed again; falling back to npm install (resolves rather than replays the lockfile)"
+      rm -rf node_modules
+      npm install "${npm_flags[@]}" "${fresh_cache[@]}"
+    fi
   fi
 else
-  npm install --no-audit --no-fund
+  npm install "${npm_flags[@]}"
 fi
 
 info "Checking types and lint"
