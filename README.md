@@ -29,6 +29,7 @@ Absolute Beginner → Python Developer → Automation Developer
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Containers, CI/CD, production hardening |
 | [docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) | Publishing the static site (Render, Firebase, GitHub Pages) |
 | [docs/CURRICULUM.md](docs/CURRICULUM.md) | Content model + how to author lessons |
+| [docs/CURRICULUM_ROADMAP.md](docs/CURRICULUM_ROADMAP.md) | Proposed expansion of the curriculum to ~600 hours |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution guide |
 
 ---
