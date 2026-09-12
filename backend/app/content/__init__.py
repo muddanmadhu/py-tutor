@@ -13,11 +13,44 @@ from __future__ import annotations
 
 from app.content.achievements import ACHIEVEMENTS, QUIZ_BANK
 from app.content.concepts import CONCEPTS
-from app.content.lessons import CORE_MODULE, FOUNDATIONS_MODULE, PROFESSIONAL_MODULE
+from app.content.lessons import (
+    ALGORITHMS_MODULE,
+    CORE_MODULE,
+    FOUNDATIONS_MODULE,
+    PROFESSIONAL_MODULE,
+)
 from app.content.projects import PROJECTS
 from app.content.reference_entries import REFERENCE
-from app.content.schema import CourseSpec, validate
+from app.content.schema import CourseSpec, ModuleSpec, ProjectSpec, validate
 from app.models.enums import SkillLevel
+
+_MODULES: tuple[ModuleSpec, ...] = (
+    FOUNDATIONS_MODULE,
+    ALGORITHMS_MODULE,
+    CORE_MODULE,
+    PROFESSIONAL_MODULE,
+)
+
+
+def _estimated_hours(modules: tuple[ModuleSpec, ...], projects: tuple[ProjectSpec, ...]) -> int:
+    """Total learner hours, derived from the content rather than declared.
+
+    This was a hand-written literal, which is a number that is correct only until
+    the next content change — and an audit found it had to be reverse-engineered
+    to know whether it still was. The three sources are all here, so compute it.
+
+    Lesson and exercise time are separate fields: a lesson's ``estimated_minutes``
+    covers the teaching material only, and each exercise carries its own estimate.
+    """
+    minutes = sum(lesson.estimated_minutes for module in modules for lesson in module.lessons)
+    minutes += sum(
+        exercise.estimated_minutes
+        for module in modules
+        for lesson in module.lessons
+        for exercise in lesson.exercises
+    )
+    return round(minutes / 60 + sum(project.estimated_hours for project in projects))
+
 
 MASTERY_COURSE = CourseSpec(
     slug="python-engineering-mastery",
@@ -36,7 +69,7 @@ collections, error handling, objects, files, HTTP, testing and unattended
 automation. It closes with four projects whose scaffolding fades until you are
 handed nothing but requirements.""",
     level=SkillLevel.BEGINNER,
-    estimated_hours=60,
+    estimated_hours=_estimated_hours(_MODULES, PROJECTS),
     outcomes=(
         "Write, run and debug Python programs with confidence",
         "Choose the right data structure and justify the choice",
@@ -48,7 +81,7 @@ handed nothing but requirements.""",
         "Build automation that runs unattended and can be diagnosed from its logs",
         "Take a business requirement and deliver a designed, tested, deployable service",
     ),
-    modules=(FOUNDATIONS_MODULE, CORE_MODULE, PROFESSIONAL_MODULE),
+    modules=_MODULES,
 )
 
 COURSES: tuple[CourseSpec, ...] = (MASTERY_COURSE,)

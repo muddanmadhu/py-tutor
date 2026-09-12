@@ -596,6 +596,126 @@ CONCEPTS: tuple[ConceptSpec, ...] = (
         difficulty=0.75,
         prerequisites=("lists", "dictionaries"),
     ),
+    # -- algorithms ---------------------------------------------------------
+    # A new category rather than additions to `collections` or `advanced`:
+    # app.services.certification gates certificates on the average mastery of
+    # named categories, so adding concepts to one of those would change what an
+    # already-issued certificate meant. Nothing requires `algorithms` yet.
+    ConceptSpec(
+        slug="sorting",
+        name="Sorting and key functions",
+        description="sorted() and list.sort(), the key= function, stability, and why "
+        "decorating beats writing a comparator.",
+        category="algorithms",
+        level=SkillLevel.INTERMEDIATE,
+        difficulty=0.45,
+        weight=1.0,
+        prerequisites=("lists", "tuples", "functions"),
+        misconceptions=(
+            {
+                "slug": "sort-returns-none",
+                "explanation": "`list.sort()` sorts in place and returns None; `sorted(x)` "
+                "returns a new list and leaves x alone. `y = x.sort()` binds None, which "
+                "then fails somewhere unrelated with 'NoneType is not iterable'.",
+            },
+            {
+                "slug": "key-vs-call",
+                "explanation": "`key=` takes the function itself, not a call. `key=len` is "
+                "right; `key=len()` calls len with no arguments and raises immediately.",
+            },
+            {
+                "slug": "stability-ignored",
+                "explanation": "Python's sort is stable: equal keys keep their original "
+                "order. That is what lets you sort by secondary key first, then primary — "
+                "two simple sorts instead of one compound key.",
+            },
+        ),
+    ),
+    ConceptSpec(
+        slug="complexity",
+        name="Time and space complexity",
+        description="Big-O as a statement about growth, what the standard containers "
+        "actually cost, and when the constant factor wins anyway.",
+        category="algorithms",
+        level=SkillLevel.INTERMEDIATE,
+        difficulty=0.6,
+        weight=1.1,
+        prerequisites=("lists", "dictionaries", "sets"),
+        misconceptions=(
+            {
+                "slug": "big-o-is-speed",
+                "explanation": "Big-O describes how cost grows with n, not how fast "
+                "something is. An O(n) scan of 10 items beats an O(1) lookup that has to "
+                "build a dict first. Complexity decides which wins as n grows, not at n=10.",
+            },
+            {
+                "slug": "in-is-cheap",
+                "explanation": "`x in some_list` scans — O(n). `x in some_set` hashes — "
+                "O(1). A membership test inside a loop over a list is the most common "
+                "accidental O(n^2) in Python.",
+            },
+        ),
+    ),
+    ConceptSpec(
+        slug="searching",
+        name="Searching",
+        description="Linear scan, dict lookup and bisect on sorted data — and how to "
+        "pick between them.",
+        category="algorithms",
+        level=SkillLevel.INTERMEDIATE,
+        difficulty=0.5,
+        prerequisites=("lists", "complexity"),
+        misconceptions=(
+            {
+                "slug": "bisect-unsorted",
+                "explanation": "bisect assumes the sequence is already sorted and does not "
+                "check. Run it on unsorted data and you get a confident wrong answer rather "
+                "than an error — the worst kind of bug.",
+            },
+        ),
+    ),
+    ConceptSpec(
+        slug="stacks-queues",
+        name="Stacks, queues and deques",
+        description="LIFO and FIFO access, why list.pop(0) is the wrong queue, and what "
+        "collections.deque is for.",
+        category="algorithms",
+        level=SkillLevel.INTERMEDIATE,
+        difficulty=0.5,
+        prerequisites=("lists", "complexity"),
+        misconceptions=(
+            {
+                "slug": "list-as-queue",
+                "explanation": "`list.pop(0)` shifts every remaining element left, so it is "
+                "O(n) and a loop over it is O(n^2). `collections.deque.popleft()` is O(1). "
+                "A list is a fine stack and a bad queue.",
+            },
+        ),
+    ),
+    ConceptSpec(
+        slug="heaps",
+        name="Heaps and priority queues",
+        description="heapq on a plain list, why the smallest item is cheap and the whole "
+        "order is not, and the tuple trick for priorities.",
+        category="algorithms",
+        level=SkillLevel.ADVANCED,
+        difficulty=0.65,
+        prerequisites=("lists", "tuples", "complexity"),
+        misconceptions=(
+            {
+                "slug": "heap-is-sorted",
+                "explanation": "A heap is not a sorted list. Only index 0 is guaranteed to "
+                "be the smallest; printing the list shows a shape that looks scrambled and "
+                "is correct. Use heappop repeatedly if you need full order.",
+            },
+            {
+                "slug": "heap-max",
+                "explanation": "heapq is a min-heap only. For a max-heap, push negated "
+                "values (numbers) or use a (-priority, item) tuple, and remember to negate "
+                "back on the way out.",
+            },
+        ),
+    ),
 )
 
 CONCEPTS_BY_SLUG = {concept.slug: concept for concept in CONCEPTS}
