@@ -29,7 +29,7 @@ Absolute Beginner → Python Developer → Automation Developer
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Containers, CI/CD, production hardening |
 | [docs/DEPLOY_GITHUB_PAGES.md](docs/DEPLOY_GITHUB_PAGES.md) | Publishing the static site (Render, Firebase, GitHub Pages) |
 | [docs/CURRICULUM.md](docs/CURRICULUM.md) | Content model + how to author lessons |
-| [docs/CURRICULUM_ROADMAP.md](docs/CURRICULUM_ROADMAP.md) | Curriculum expansion to ~300 hours: plan and progress |
+| [docs/CURRICULUM_ROADMAP.md](docs/CURRICULUM_ROADMAP.md) | What the 100-hour curriculum consists of, and how the hours are counted |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution guide |
 
 ---
@@ -40,8 +40,9 @@ Absolute Beginner → Python Developer → Automation Developer
 - Curriculum tree: Course → Module → Lesson → Concept → Exercise
 - Every lesson follows the *Explain → Show → Execute → Experiment → Practice → Debug →
   Apply → Build → Test → Master* pattern
-- Seed curriculum spanning fundamentals through APIs, testing and automation, plus a
-  complete real-world project
+- ~100 hours: 19 lessons, 36 graded exercises and 11 projects, spanning fundamentals,
+  data structures, APIs, testing and automation
+- A 49-entry searchable Python Reference, cross-linked from the lessons
 
 **Execution**
 - Docker-isolated Python runners: no network, read-only rootfs, CPU/memory/PID caps,
@@ -57,6 +58,11 @@ Absolute Beginner → Python Developer → Automation Developer
 - AI tutor with a strict *progressive hint ladder* — it will not hand over the solution
   while a learner is mid-exercise
 - Senior-engineer code review across 11 dimensions
+
+**Project academy**
+- Eleven builds with guidance fading from fully guided to a business brief and a
+  rubric: log triage, a finance report, a resilient API client, invoice reconciliation,
+  an ETL load, inventory sync, incident reporting, and a 30-hour capstone
 
 **Progress**
 - Dashboard, streaks, XP, badges, certification gates tied to demonstrated mastery

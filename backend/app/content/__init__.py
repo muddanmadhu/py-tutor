@@ -19,10 +19,40 @@ from app.content.lessons import (
     FOUNDATIONS_MODULE,
     PROFESSIONAL_MODULE,
 )
-from app.content.projects import PROJECTS
-from app.content.reference_entries import REFERENCE
+from app.content.projects import CALCULATOR, CAPSTONE, EXPENSE_TRACKER, FILE_PLATFORM
+from app.content.projects_realworld import (
+    API_CLIENT_SDK,
+    CSV_REPORT_ENGINE,
+    ETL_PIPELINE,
+    INCIDENT_REPORT,
+    INVENTORY_SYNC,
+    INVOICE_RECONCILIATION,
+    LOG_ANALYZER,
+)
+from app.content.reference_entries import REFERENCE as SEED_REFERENCE
+from app.content.reference_stdlib import ADDITIONAL_REFERENCE
 from app.content.schema import CourseSpec, ModuleSpec, ProjectSpec, validate
 from app.models.enums import SkillLevel
+
+#: The Python Reference library. Split across two modules purely for file size.
+REFERENCE = SEED_REFERENCE + ADDITIONAL_REFERENCE
+
+#: The project ladder, in the order a learner meets it. Ordered so every project's
+#: prerequisites appear before it, and so guidance fades monotonically:
+#: fully guided -> partially guided -> requirements only -> independent.
+PROJECTS: tuple[ProjectSpec, ...] = (
+    CALCULATOR,
+    EXPENSE_TRACKER,
+    LOG_ANALYZER,
+    CSV_REPORT_ENGINE,
+    API_CLIENT_SDK,
+    INVOICE_RECONCILIATION,
+    ETL_PIPELINE,
+    INVENTORY_SYNC,
+    FILE_PLATFORM,
+    INCIDENT_REPORT,
+    CAPSTONE,
+)
 
 _MODULES: tuple[ModuleSpec, ...] = (
     FOUNDATIONS_MODULE,

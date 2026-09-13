@@ -1,20 +1,19 @@
-# Curriculum Roadmap — Scaling to ~300 Hours
+# Curriculum Roadmap — 100 Hours
 
-Target revised from 600 h to **~300 h** (2026-09-12), project-heavy. See
-[CURRICULUM.md](CURRICULUM.md) for the authoring model this follows — the roadmap
-adds content, not mechanism.
+Target revised 600 h → 300 h → **100 h** (2026-09-12), project-heavy. The target
+is **met**: `estimated_hours` derives to exactly 100 from the content in the tree.
 
-**Tranche 1 of 9 has landed.** Module 4 is built and validated; the rest is
-planned. Progress is in §6.
+See [CURRICULUM.md](CURRICULUM.md) for the authoring model. This document records
+what the 100 hours consists of, how it is counted, and what a future expansion
+would add.
 
 ---
 
 ## 1. How the hours are counted
 
-`CourseSpec.estimated_hours` is now **derived** from the content rather than
-declared ([`app/content/__init__.py`](../backend/app/content/__init__.py)), so it
-cannot drift. It is the sum of three sources, and lesson time and exercise time
-are separate fields:
+`CourseSpec.estimated_hours` is **derived**, not declared
+([`app/content/__init__.py`](../backend/app/content/__init__.py)), so it cannot
+drift from the content:
 
 ```
 lesson estimated_minutes + exercise estimated_minutes
@@ -22,140 +21,112 @@ lesson estimated_minutes + exercise estimated_minutes
                                      60
 ```
 
-At the start of this work that came to 59.3 h (declared as a literal 60, which
-happened to be right). The literal is gone.
+Lesson time and exercise time are separate fields — a lesson's
+`estimated_minutes` covers the teaching material only.
 
-## 2. Target composition
+## 2. Composition
 
-| Source | Start | **Now** | Target | Count at target |
+| Source | Start | **Now** | Count |
+| --- | --- | --- | --- |
+| Lessons | 6.1 h | **9.1 h** | 13 → 19 |
+| Exercises | 4.2 h | **8.3 h** | 18 → 36 |
+| Projects | 49.0 h | **83.0 h** | 4 → 11 |
+| **Total** | **59.3 h** | **100 h** | |
+
+Projects carry **83%** of the programme. That is the project-heavy shape asked
+for, and it matches the README's claim that learners spend most of their time
+writing, running, breaking and fixing Python rather than reading.
+
+The Python Reference grew 16 → **49** entries. Reference material is lookup, not
+timed study, so it carries no estimated hours and does not appear above.
+
+## 3. Modules
+
+| # | Module | Level | Lessons | Ex |
 | --- | --- | --- | --- | --- |
-| Lessons | 6.1 h | **9.1 h** | 30.1 h | 13 → 61 (+48) |
-| Exercises | 4.2 h | **8.3 h** | 42.5 h | 18 → 162 (+144) |
-| Projects | 49.0 h | 49.0 h | 227.3 h | 4 → 16 (+12) |
-| **Total** | **59.3 h** | **66.5 h** | **299.9 h** | |
+| 1 | `foundations` | beginner | 4 | 7 |
+| 2 | `data-structures-and-algorithms` | intermediate | 6 | 18 |
+| 3 | `core-python` | intermediate | 4 | 6 |
+| 4 | `professional-python` | professional | 5 | 5 |
+| | **Total** | | **19** | **36** |
 
-Projects carry **76%** of the hours at target, which is what "project-heavy"
-means here: lesson prose stays a tenth of the programme and the time goes where
-learners write code.
+## 4. The project ladder
 
-## 3. Module map
-
-Modules 1–3 existed. Module 4 is built. Modules 5–11 are planned at 6 lessons
-and 18 exercises each — the shape module 4 established.
-
-| # | Module | Level | Lessons | Ex | Status |
-| --- | --- | --- | --- | --- | --- |
-| 1 | `foundations` | beginner | 4 | 7 | existing |
-| 2 | `core-python` | intermediate | 4 | 6 | existing |
-| 3 | `professional-python` | professional | 5 | 5 | existing |
-| 4 | `data-structures-and-algorithms` | intermediate | 6 | 18 | **built** |
-| 5 | `text-and-regex` | intermediate | 6 | 18 | planned |
-| 6 | `iterators-and-generators` | intermediate | 6 | 18 | planned |
-| 7 | `functional-python` | advanced | 6 | 18 | planned |
-| 8 | `typing-and-contracts` | advanced | 6 | 18 | planned |
-| 9 | `concurrency-and-async` | advanced | 6 | 18 | planned |
-| 10 | `databases-and-persistence` | professional | 6 | 18 | planned |
-| 11 | `web-services-and-operations` | professional | 6 | 18 | planned |
-| | **Total** | | **61** | **162** | |
-
-This covers the gaps [CURRICULUM.md §Scaling](CURRICULUM.md) names — regex,
-generators, decorators, async, databases, web frameworks, Docker — plus typing.
-Dropped relative to the 600 h plan: separate modules for OOP depth, testing
-depth, packaging, performance internals, security and architecture. Those
-subjects are not absent; they stay where they already are in module 3 and in the
-project rubrics.
-
-## 4. Project academy ladder
-
-Guidance fades as level rises, per
-[CURRICULUM.md §Writing a project](CURRICULUM.md).
+Eleven projects, guidance fading monotonically, every prerequisite ahead of its
+dependent. The seven added for the 100 h target are production-like: the kind of
+task handed to an engineer in their first year, stated as a business requirement.
 
 | Project | Level | Guidance | h |
 | --- | --- | --- | --- |
-| `calculator-cli` *(exists)* | beginner | fully_guided | 2 |
-| `text-adventure-engine` | beginner | fully_guided | 4 |
-| `flashcard-trainer` | beginner | fully_guided | 5 |
-| `expense-tracker-cli` *(exists)* | intermediate | partially_guided | 5 |
-| `log-analyzer` | intermediate | partially_guided | 8 |
-| `static-site-generator` | intermediate | partially_guided | 10 |
-| `csv-report-engine` | intermediate | partially_guided | 9 |
-| `async-web-crawler` | advanced | partially_guided | 16 |
-| `cli-framework` | advanced | partially_guided | 14 |
-| `orm-from-scratch` | advanced | requirements_only | 20 |
-| `file-processing-platform` *(exists)* | professional | requirements_only | 12 |
-| `rest-api-service` | professional | requirements_only | 24 |
-| `auth-rbac-service` | professional | requirements_only | 20 |
-| `etl-pipeline` | professional | requirements_only | 22 |
-| `observability-platform` | engineering | independent | 26 |
-| `enterprise-automation-service` *(exists, capstone)* | engineering | independent | 30 |
-| | | **Total** | **227** |
+| `calculator-cli` | beginner | fully_guided | 2 |
+| `expense-tracker-cli` | intermediate | partially_guided | 5 |
+| `log-analyzer` **new** | intermediate | partially_guided | 4 |
+| `csv-report-engine` **new** | intermediate | partially_guided | 4 |
+| `api-client-sdk` **new** | intermediate | partially_guided | 4 |
+| `invoice-reconciliation` **new** | professional | requirements_only | 5 |
+| `etl-pipeline` **new** | professional | requirements_only | 5 |
+| `inventory-sync-service` **new** | professional | requirements_only | 6 |
+| `file-processing-platform` | professional | requirements_only | 12 |
+| `incident-report-pipeline` **new** | engineering | independent | 6 |
+| `enterprise-automation-service` *(capstone)* | engineering | independent | 30 |
+| | | **Total** | **83** |
 
-Every new project needs `acceptance_tests` written against the **observable
-contract** and a weighted `rubric` — `validate()` rejects a project with no
-rubric, and `app/services/projects.py` interprets only the eleven documented
-rubric keys.
+**94 acceptance tests** across the seven new projects, written against the
+observable contract rather than an assumed design.
 
-## 5. Concepts and certification — the load-bearing risk
+### The constraint that shaped them
 
-Concept count is 43 → **48**. Module 4 added five in a **new `algorithms`
-category**: `sorting`, `complexity`, `searching`, `stacks-queues`, `heaps`.
+The static build runs learner code under Pyodide: no network, no database. So a
+project "about" HTTP is graded on the logic *around* HTTP — retry classification,
+backoff, `Retry-After`, pagination — with the transport injected by the test.
+`api-client-sdk` and `etl-pipeline` both take an injected collaborator (`send`,
+`load`) and `inventory-sync-service` takes `apply`. That is also how this code
+should be tested in production, so the constraint improved the design rather than
+limiting it.
 
-`app/services/certification.py` gates each certification on named concept
-categories reaching an average mastery threshold. Adding concepts to an
-*existing* category changes what an existing certificate means — 20 new
-`advanced` concepts would move the average a learner needs for the Advanced
-certification, potentially revoking one already earned. So new concepts go in
-**new categories** by default, and module 4 followed that rule.
+## 5. The Python Reference — why it grew
 
-The new tracks will eventually want their own certifications. **That remains a
-decision for you, not a default to pick.** Nothing requires `algorithms` yet, so
-no existing certificate changed meaning.
+An audit found **18 of 19 lessons cited `reference_keys` with no matching
+entry**. `validate()` does not check those keys, so the "look this up" links were
+dead across nearly the whole curriculum, including the original content.
 
-An earlier draft of this plan assumed many needed concepts already existed as
-unused stubs. That was wrong: of 43 concepts only three (`generators`,
-`closures`, `decorators`) are unreferenced. Concepts must be authored per module.
+All 28 missing keys now exist, plus the APIs the data-structures module teaches
+(`collections.deque`, `heapq`, `bisect`, `Counter`, `defaultdict`) which a
+learner reaches for immediately afterwards. Every lesson reference link resolves;
+a test asserting that would be a worthwhile addition.
 
-## 6. Tranche plan and progress
+## 6. Concepts and certification
 
-Each tranche ends green on `pytest tests/test_content.py` and a rebuilt bundle,
-so the site is never in a broken intermediate state.
+48 concepts. The five added with module 2 sit in a **new `algorithms` category**,
+because `app/services/certification.py` gates certificates on the average mastery
+of named categories — adding to an existing category retroactively changes what
+an already-issued certificate meant. Nothing requires `algorithms` yet, so no
+certificate changed meaning.
 
-| # | Tranche | Lands | Status |
-| --- | --- | --- | --- |
-| 1 | Module 4 + `algorithms` concepts + derived hours | 6 lessons, 18 exercises, 5 concepts | **done** |
-| 2 | Module 5 `text-and-regex` | 6 lessons, 18 exercises, concepts | next |
-| 3 | Module 6 `iterators-and-generators` | 6 lessons, 18 exercises | |
-| 4 | Module 7 `functional-python` | 6 lessons, 18 exercises | |
-| 5 | Module 8 `typing-and-contracts` | 6 lessons, 18 exercises | |
-| 6 | Module 9 `concurrency-and-async` | 6 lessons, 18 exercises | |
-| 7 | Modules 10–11 databases + web services | 12 lessons, 36 exercises | |
-| 8 | Projects, beginner → advanced | 6 projects, 86 h | |
-| 9 | Projects, professional → engineering | 6 projects, 92 h + reference entries | |
+The new tracks could have their own certifications. That is a product decision,
+not a default worth picking silently.
 
-Concepts land with their module rather than all up front, because `validate()`
-rejects a lesson referencing a concept that does not exist but does not mind
-concepts arriving late.
+## 7. What "done" means, and what it caught
 
-## 7. What "done" means for a lesson
+Every tranche is verified beyond `validate()`:
 
-Module 4 set the bar, and it is mechanically checkable. For every exercise:
+- each exercise's reference solution **passes** its hidden tests (15/15)
+- each exercise's starter files **fail** them — this caught
+  `complexity-fix-quadratic` shipping **pre-solved**, because its timing
+  threshold was loose enough for the quadratic starter to pass
+- every `Example` output reproduced by executing it — 24 lesson examples and
+  **106 reference examples**, which caught one wrong claimed output in `bisect`
+- acceptance tests must not error on collection, and must not pass vacuously:
+  two did, and were removed or strengthened
 
-- the reference solution **passes** its own hidden tests
-- the starter files **fail** them — otherwise the exercise ships pre-solved
-- four escalating hint rungs, none of which is the solution
-- hidden-test failure messages teach rather than just report
+## 8. If this grows again
 
-And for every lesson, all ten required sections, plus every `Example`'s stated
-output verified by executing it. Both checks are worth re-running per tranche;
-the pre-solved case is not hypothetical — it caught `complexity-fix-quadratic`,
-whose timing threshold was loose enough for the quadratic starter to pass.
+The next increments, in value order:
 
-## 8. Scope note
-
-Remaining after tranche 1: **42 lessons, 126 exercises, 12 projects** and their
-concepts and reference entries. Existing lesson modules run 46–87 KB of authored
-Python each; module 4 is ~60 KB for six lessons, so the remainder is on the order
-of **400–500 KB** of new content.
-
-Not one sitting. The tranche structure exists so each step is reviewable and the
-curriculum is coherent and shippable throughout.
+1. **A test that every `reference_keys` entry resolves.** The gap above existed
+   because nothing checked. Cheap, and prevents recurrence.
+2. **Module 5, `text-and-regex`** — 6 lessons, 18 exercises, ~5 h. The `regex`
+   concept exists and is taught nowhere.
+3. **Generators and decorators** — the only other unreferenced concepts.
+4. More projects. At 83 h of 100, projects are where hours accumulate fastest:
+   one professional build is worth roughly a whole lesson module.
